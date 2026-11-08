@@ -282,9 +282,11 @@ The full on‑clock behaviour is described in [docs/device-ux.md](docs/device-ux
 
 Issues, forks and pull requests are welcome. Especially valuable:
 
-- **VOC / temperature sensor** — identifying the chips and how they're wired
-  (logic‑analyser captures from the original firmware's air‑quality screen
-  would be gold)
+- **VOC / temperature sensor** — the VOC chip is a GY‑SGP40 (SGP40, I²C 0x59);
+  still needed: which D1 mini pins it's wired to (probably D6/D3), and where
+  room temperature comes from, since the SGP40 doesn't measure it. A continuity
+  check or a capture of the original firmware's air‑quality screen would settle
+  both ([issue 10](https://github.com/ast0ne1/cosmolibre/issues/10))
 - **Battery level** and charging state
 - Playing the **original chimes**
 - **Firmware updates from the web UI** — upload a new version over Wi‑Fi
