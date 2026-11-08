@@ -1,0 +1,44 @@
+﻿# CosmoLibre publishes ONLY what's needed to build and flash the firmware,
+# plus the README. Everything else in this folder (firmware dumps, reverse-
+# engineering notes, extracted OEM assets, probes, local tooling, backups) is
+# private and must never be committed — so ignore everything, then allow-list.
+
+/*
+!/.gitignore
+!/README.md
+!/LICENSE
+
+# README images + the on-device UX spec
+!/docs/
+/docs/*
+!/docs/images/
+!/docs/device-ux.md
+
+# The firmware project (sources only)
+!/firmware/
+/firmware/*
+!/firmware/cosmo/
+/firmware/cosmo/*
+!/firmware/cosmo/platformio.ini
+!/firmware/cosmo/src/
+!/firmware/cosmo/include/
+!/firmware/cosmo/web/
+!/firmware/cosmo/scripts/
+!/firmware/cosmo/fonts-src/
+
+# Desktop preview + tests (sources only; build output and local sounds stay out)
+!/firmware/cosmo/preview/
+/firmware/cosmo/preview/build/
+/firmware/cosmo/preview/sounds/
+__pycache__/
+
+# Generated at build time (scripts/embed_web.py)
+/firmware/cosmo/include/generated/
+
+# Never, wherever they turn up
+*.bin
+*.elf
+*.wav
+.pio/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,161 @@
+<!--
+  Wi-Fi setup portal skin. Injected into WiFiManager's pages with
+  setCustomHeadElement() (scripts/embed_web.py turns it into kPortalHead).
+  WiFiManager still serves the pages and handles /wifisave, so saving keeps the
+  stock "persist PSK, then reboot" path. Without JS the stock page still works.
+-->
+<style>
+:root{color-scheme:dark}
+body{background:#3a3f47;color:#fff;font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;margin:0}
+.wrap{max-width:340px;margin:0 auto;padding:12vh 16px 32px;text-align:center}
+.cl h1{font-size:1.7rem;margin:0 0 .4rem;line-height:1.2}
+.cl .sub{margin:0 0 1.6rem;opacity:.85;font-size:1rem}
+.cl input,.cl select,.cl button{display:block;width:100%;box-sizing:border-box;margin:0 0 .9rem;padding:0 1.1rem;height:3rem;border:2px solid #fff;border-radius:1.5rem;background:transparent;color:#fff;font-size:1rem;font-family:inherit;text-align:left}
+.cl select{appearance:none;-webkit-appearance:none;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23fff' stroke-width='2' fill='none'/%3E%3C/svg%3E") no-repeat right 1.1rem center;padding-right:2.6rem}
+.cl option{color:#000}
+.cl input::placeholder{color:#fff;opacity:.6}
+.cl .pw{position:relative}
+.cl .pw input{padding-right:4.2rem}
+.cl .eye{position:absolute;right:.4rem;top:.4rem;width:auto;height:2.2rem;margin:0;padding:0 .8rem;border:0;font-size:.85rem;text-align:center;opacity:.8}
+.cl .go{text-align:center;font-weight:600;margin-top:1.4rem;background:#fff;color:#3a3f47}
+.cl .go:disabled{opacity:.6}
+.cl .link{background:none;border:0;height:auto;padding:.4rem;width:auto;margin:.2rem auto;text-align:center;text-decoration:underline;font-size:.9rem;opacity:.8}
+.cl .note{font-size:.9rem;opacity:.85;margin:0 0 1rem}
+.cl .msg{border:0;background:rgba(255,255,255,.12);border-radius:1rem;padding:.8rem 1rem;margin:0 0 1.2rem;font-size:.9rem;text-align:center}
+.cl .bad{background:rgba(255,120,120,.22)}
+.cl [hidden]{display:none!important}
+</style>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var path = location.pathname;
+  if (path === '/' || path === '/index.html') { location.replace('/wifi'); return; }
+  var wrap = document.querySelector('.wrap');
+  if (!wrap) return;
+  document.title = 'CosmoLibre Wi-Fi';
+  document.body.className += ' cl';
+
+  function el(tag, attrs, text) {
+    var e = document.createElement(tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (text) e.textContent = text;
+    return e;
+  }
+  function head(sub) {
+    var f = document.createDocumentFragment();
+    f.appendChild(el('h1', {}, 'Connect CosmoLibre to Wi‑Fi'));
+    f.appendChild(el('p', { 'class': 'sub' }, sub));
+    return f;
+  }
+
+  // Saved page: say what happens next instead of the stock text.
+  if (/wifisave$/.test(path)) {
+    wrap.innerHTML = '';
+    wrap.appendChild(head('Saved. Your clock is restarting to join your Wi-Fi.'));
+    wrap.appendChild(el('p', { 'class': 'note' },
+      'This hotspot will disappear. Reconnect your phone to your home Wi-Fi. ' +
+      'If the clock shows WIFI SETUP again, join CosmoLibre and check the password.'));
+    return;
+  }
+
+  var form = document.querySelector('form[action="wifisave"]');
+  var s = document.getElementById('s');
+  var p = document.getElementById('p');
+  if (!form || !s || !p) return;
+
+  // Networks from WiFiManager's scan list (strongest first).
+  var nets = [];
+  var links = document.querySelectorAll('a[data-ssid]');
+  for (var i = 0; i < links.length; i++) {
+    var q = links[i].nextElementSibling;
+    var lock = !!(q && q.classList.contains('l'));
+    var bars = 0;
+    if (q) for (var b = 1; b <= 4; b++) if (q.classList.contains('q-' + b)) bars = b;
+    nets.push({ ssid: links[i].getAttribute('data-ssid'), lock: lock, bars: bars });
+  }
+  var saved = s.getAttribute('placeholder') || '';
+  var status = wrap.querySelector('.msg');
+  var failed = status && /Not connected/.test(status.textContent);
+
+  // Build the new page; the original form element is reused so it posts as before.
+  var ui = document.createDocumentFragment();
+  ui.appendChild(head('Choose your network and enter its password.'));
+  if (failed) {
+    var why = /Authentication/.test(status.textContent) ? 'The password was not accepted.'
+      : /AP not found/.test(status.textContent) ? 'That network was not found.'
+      : 'The clock could not connect last time.';
+    ui.appendChild(el('div', { 'class': 'msg bad' }, why + ' Please try again.'));
+  }
+
+  var sel = el('select', { 'aria-label': 'Wi-Fi network' });
+  var ph = el('option', { value: '' }, nets.length ? 'Choose a network' : 'No networks found');
+  ph.disabled = true;
+  sel.appendChild(ph);
+  var bar = ['', '▂', '▂▄', '▂▄▆', '▂▄▆█'];
+  nets.forEach(function (n, k) {
+    sel.appendChild(el('option', { value: String(k) },
+      n.ssid + '   ' + bar[n.bars] + (n.lock ? ' 🔒' : '')));
+  });
+  sel.appendChild(el('option', { value: 'other' }, 'Other network…'));
+
+  var hit = -1;
+  nets.forEach(function (n, k) { if (hit < 0 && saved && n.ssid === saved) hit = k; });
+  sel.value = hit >= 0 ? String(hit) : '';
+
+  s.removeAttribute('placeholder');
+  s.setAttribute('placeholder', 'Network name');
+  s.required = false;
+  p.setAttribute('placeholder', 'Password');
+  p.value = '';
+
+  var pw = el('div', { 'class': 'pw' });
+  var eye = el('button', { type: 'button', 'class': 'eye' }, 'Show');
+  eye.onclick = function () {
+    var show = p.type === 'password';
+    p.type = show ? 'text' : 'password';
+    eye.textContent = show ? 'Hide' : 'Show';
+  };
+  var go = el('button', { type: 'submit', 'class': 'go' }, 'Connect');
+
+  function sync() {
+    var v = sel.value;
+    var other = v === 'other';
+    var n = other || v === '' ? null : nets[+v];
+    s.hidden = !other;
+    if (n) s.value = n.ssid; else if (!other) s.value = '';
+    var open = n && !n.lock;
+    pw.hidden = !!open;
+    p.disabled = !!open;
+    if (open) p.value = '';
+    go.disabled = !(n || (other && s.value.trim()));
+  }
+  sel.onchange = function () {
+    if (sel.value === 'other') s.value = '';
+    sync();
+    if (sel.value === 'other') s.focus(); else if (!pw.hidden) p.focus();
+  };
+  s.oninput = sync;
+
+  form.innerHTML = '';
+  form.appendChild(sel);
+  form.appendChild(s);
+  pw.appendChild(p);
+  pw.appendChild(eye);
+  form.appendChild(pw);
+  form.appendChild(go);
+  form.onsubmit = function () {
+    if (go.disabled) return false;
+    go.disabled = true;
+    go.textContent = 'Connecting…';
+  };
+
+  var rescan = el('form', { action: 'wifi?refresh=1', method: 'POST' });
+  var rb = el('button', { 'class': 'link', name: 'refresh', value: '1' }, 'Scan again');
+  rescan.appendChild(rb);
+
+  wrap.innerHTML = '';
+  wrap.appendChild(ui);
+  wrap.appendChild(form);
+  wrap.appendChild(rescan);
+  sync();
+});
+</script>

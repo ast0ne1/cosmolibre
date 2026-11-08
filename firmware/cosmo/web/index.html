@@ -1,0 +1,671 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CosmoLibre</title>
+<style>
+:root{--paper:#f4f1ea;--paper2:#e7ece9;--ink:#1a1f1c;--muted:#5d6560;--line:#1a1f1c24;--card:#fffdf8;--accent:#2f5d50;--danger:#8a3030;--ok:#2f6b3a;--warn:#8a6a1e;--bezel:#26292a;--sel:#2f5d5018}
+@media (prefers-color-scheme:dark){:root{--paper:#151816;--paper2:#1b201d;--ink:#e8e6df;--muted:#9aa29c;--line:#e8e6df22;--card:#1f2421;--accent:#8cc5b2;--danger:#e39a9a;--ok:#8fd19b;--warn:#e3c374;--bezel:#0c0d0d;--sel:#8cc5b222}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;font:16px/1.45 Georgia,"Times New Roman",serif;color:var(--ink);background:linear-gradient(165deg,var(--paper),var(--paper2)) fixed;min-height:100vh}
+.mono,dd,.pill,select,input,button{font-family:ui-monospace,"Cascadia Mono",Consolas,Menlo,monospace}
+header{max-width:68rem;margin:0 auto;padding:1.4rem 1rem .5rem;display:flex;align-items:center;gap:.8rem;flex-wrap:wrap}
+h1{font-size:1.6rem;margin:0;letter-spacing:.01em;font-weight:700}h1 .lite{font-weight:400}
+.pill{font-size:12px;line-height:1;padding:.35rem .6rem;border:1px solid var(--line);border-radius:99px;color:var(--muted)}
+.pill.ok{color:var(--ok);border-color:currentColor}.pill.warn{color:var(--warn);border-color:currentColor}
+nav{max-width:68rem;margin:0 auto;padding:0 1rem;display:flex;gap:.1rem;border-bottom:1px solid var(--line);overflow-x:auto}
+nav a{color:var(--muted);text-decoration:none;padding:.6rem .85rem;border-bottom:2px solid transparent;white-space:nowrap}
+nav a.on{color:var(--ink);border-color:var(--ink)}
+main{max-width:68rem;margin:0 auto;padding:1.3rem 1rem 5rem;display:grid;grid-template-columns:minmax(0,1fr) 17rem;gap:1.8rem;align-items:start}
+.device{position:sticky;top:1rem;grid-column:2;grid-row:1}
+.bezel{background:var(--bezel);border-radius:22px;padding:18px 16px 22px;box-shadow:0 14px 34px #0003}
+.screen{display:block;width:100%;max-width:240px;aspect-ratio:280/480;margin:0 auto;background:#fff;border-radius:4px;image-rendering:pixelated;object-fit:contain}
+.caption{font-size:.8rem;color:var(--muted);text-align:center;margin:.6rem 0 0}
+.panels{grid-column:1;grid-row:1;min-width:0}
+section{display:none}section.on{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:1.1rem 1.2rem;margin:0 0 1rem}
+h2{font-size:1.1rem;margin:0 0 .2rem}
+.sub{color:var(--muted);font-size:.88rem;margin:0 0 .9rem}
+.head{display:flex;justify-content:space-between;align-items:baseline;gap:1rem;flex-wrap:wrap}
+dl{display:grid;grid-template-columns:7.5rem 1fr;gap:.4rem .8rem;margin:0}
+dt{color:var(--muted);font-size:.88rem}dd{margin:0;font-size:.9rem;overflow-wrap:anywhere}
+label{display:block;margin:.9rem 0 .3rem;color:var(--muted);font-size:.88rem}
+label.check{display:flex;gap:.55rem;align-items:center;color:var(--ink);font-size:.95rem;margin:.4rem 0}
+select,input[type=text],input[type=time],input[type=number]{font-size:.92rem;color:inherit;background:var(--paper);border:1px solid var(--line);border-radius:7px;padding:.5rem .6rem;width:100%}
+button{font-size:.88rem;color:var(--ink);background:transparent;border:1px solid var(--ink);border-radius:7px;padding:.55rem 1rem;cursor:pointer;margin:.25rem .4rem .25rem 0}
+button.primary{background:var(--ink);color:var(--paper)}
+button.danger{border-color:var(--danger);color:var(--danger)}
+button.link{border:none;padding:.3rem .4rem;margin:0;color:var(--muted);text-decoration:underline}
+button:disabled{opacity:.4;cursor:default}
+.hint{font-size:.85rem;color:var(--muted);margin:.6rem 0 0}
+.thumb{display:block;width:100%;background:#fff;border:1px solid var(--line);border-radius:4px;image-rendering:auto}
+/* pages */
+.pages{display:flex;gap:.7rem;overflow-x:auto;padding:.85rem .1rem .4rem}
+.page{flex:0 0 5.6rem;margin:0;padding:.4rem;border:1px solid var(--line);border-radius:10px;text-align:center;font-size:.78rem;line-height:1.2;position:relative}
+.page img{aspect-ratio:280/480;margin-bottom:.35rem}
+.page.on{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink);background:var(--sel)}
+.page .badge{position:absolute;top:-.55rem;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);font-size:.62rem;padding:.1rem .4rem;border-radius:99px;white-space:nowrap}
+.page[draggable=true]{cursor:grab}
+.page.dragging{opacity:.4}
+.page.dropbefore{box-shadow:-4px 0 0 var(--accent)}
+.page.dropafter{box-shadow:4px 0 0 var(--accent)}
+.pagebar{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;margin-top:.4rem}
+.pagebar button{margin:0;padding:.35rem .7rem;border-color:var(--line);font-size:.8rem}
+.page.add{border-style:dashed;color:var(--muted);display:flex;align-items:center;justify-content:center;min-height:9.5rem;font-size:.85rem}
+.rot{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-top:.6rem;font-size:.9rem}
+.rot select{width:auto;padding:.35rem .5rem}
+/* blocks on a page */
+.blocks{display:grid;gap:.55rem}
+.block{display:grid;grid-template-columns:7.5rem 1fr auto;gap:.8rem;align-items:center;margin:0;padding:.5rem .6rem;border:1px solid var(--line);border-radius:10px;text-align:left;cursor:pointer;background:transparent;color:inherit}
+.block.on{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink);background:var(--sel)}
+.block .t{font-weight:700;font-size:.95rem}.block .d{color:var(--muted);font-size:.8rem;margin-top:.15rem}
+.block .acts{display:flex;gap:.2rem}.block .acts button{margin:0;padding:.35rem .5rem;border-color:var(--line);font-size:.8rem}
+.block.empty{grid-template-columns:1fr;border-style:dashed;color:var(--muted);text-align:center;padding:.9rem;font-size:.9rem}
+/* toolbox */
+.tabs{display:flex;gap:.3rem;flex-wrap:wrap;margin:0 0 .8rem}
+.tabs button{margin:0;border-color:var(--line);border-radius:99px;padding:.4rem .9rem}
+.tabs button.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(10rem,1fr));gap:.7rem}
+.tile{margin:0;padding:.55rem;border:1px solid var(--line);border-radius:10px;text-align:left;display:flex;flex-direction:column;gap:.45rem;color:inherit}
+.tile:hover{border-color:var(--ink)}
+.tile.on{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink);background:var(--sel)}
+.tile .t{font-weight:700;font-size:.9rem}.tile .d{color:var(--muted);font-size:.78rem;line-height:1.3}
+.tile .thumbwrap{display:flex;align-items:center;justify-content:center;height:7.5rem;background:#fff;border:1px solid var(--line);border-radius:4px}
+.tile .thumbwrap img{border:none;max-height:100%;width:auto;max-width:100%}
+.presets .tile{flex-direction:row;align-items:center}.presets .tile img{width:3.4rem;flex:none;aspect-ratio:280/480}
+.savebar{position:sticky;bottom:.8rem;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;background:var(--card);border:1px solid var(--ink);border-radius:12px;padding:.6rem .9rem;box-shadow:0 8px 24px #0002;z-index:5}
+.savebar .msg{flex:1;font-size:.88rem;color:var(--warn)}
+.savebar button{margin:0}
+/* settings / misc */
+.find{display:flex;gap:.5rem}.find input{flex:1}.find button{margin:0}
+.matches{display:grid;gap:.35rem;margin-top:.5rem}
+.match{margin:0;text-align:left;border-color:var(--line);display:flex;justify-content:space-between;gap:.6rem}
+.match span{color:var(--muted);font-size:.8rem}
+.match.on{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.row{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-top:1rem}
+.mock{border-style:dashed}
+.pads{display:grid;grid-template-columns:1fr 1.3fr 1fr;gap:.5rem;max-width:240px;margin:.8rem auto 1rem}
+.pad{margin:0;padding:.65rem 0;font-size:1rem;border-color:var(--line);border-radius:10px;user-select:none;touch-action:none}
+.pad.mid{border-color:var(--ink)}
+.pad.down{background:var(--ink);color:var(--paper)}
+.pads .hint{grid-column:1/-1;text-align:center;margin:.2rem 0 0;font-size:.78rem}
+.mock .grid{display:grid;grid-template-columns:1fr 1fr;gap:0 .8rem}
+#toast{position:fixed;left:50%;bottom:1.2rem;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:.6rem 1rem;border-radius:8px;font-size:.9rem;opacity:0;transition:opacity .2s;pointer-events:none;max-width:calc(100% - 2rem);z-index:10}
+#toast.show{opacity:1}
+@media (max-width:820px){main{grid-template-columns:1fr}.device{position:static;grid-column:1;grid-row:1}.panels{grid-row:2}.screen{max-width:180px}dl{grid-template-columns:6.5rem 1fr}.block{grid-template-columns:5.5rem 1fr}.block .acts{grid-column:1/-1;justify-content:flex-end}}
+</style>
+</head>
+<body>
+<header><h1>cosmo<span class="lite">libre</span></h1><span id="pill" class="pill">connecting…</span></header>
+<nav id="nav"><a href="#display">Display</a><a href="#status">Status</a><a href="#settings">Settings</a><a href="#device">Device</a></nav>
+<main>
+  <aside class="device">
+    <div class="bezel"><img id="screen" class="screen" alt="E-paper preview"></div>
+    <p class="caption" id="caption">Live panel render</p>
+    <div class="pads" id="pads" hidden>
+      <button class="pad" data-pad="L" aria-label="Left pad">◀</button>
+      <button class="pad mid" data-pad="M" aria-label="Middle pad">●</button>
+      <button class="pad" data-pad="R" aria-label="Right pad">▶</button>
+      <p class="hint">Touch pads: click = tap, press ≥ 0.6 s = hold.<br>Keys ← Enter → (Shift = hold). Hold ● opens the menu.</p>
+    </div>
+    <div class="card mock" id="mock" hidden>
+      <h2>Preview controls</h2>
+      <div class="grid">
+        <div><label for="mTime">Time</label><input id="mTime" type="time"></div>
+        <div><label for="mDate">Date</label><input id="mDate" type="text" placeholder="2026-11-04"></div>
+        <div><label for="mTemp">Temp °C</label><input id="mTemp" type="number" min="-40" max="50"></div>
+        <div><label for="mCode">Weather</label><select id="mCode"></select></div>
+      </div>
+      <label class="check"><input id="mSynced" type="checkbox"> Time synced</label>
+      <label class="check"><input id="mWx" type="checkbox"> Weather available</label>
+      <p class="hint">Desktop preview only — not in the device build's data.</p>
+    </div>
+  </aside>
+  <div class="panels">
+    <section id="display">
+      <div class="card" id="pagesCard">
+        <h2>Pages</h2>
+        <p class="sub">The clock shows one page at a time. Tap ◀ ▶ on the clock to flip, or let it rotate.</p>
+        <div class="pages" id="pages"></div>
+        <div class="pagebar" id="pagebar">
+          <button id="moveLeft" title="Move the selected page earlier">◀ Move</button>
+          <button id="moveRight" title="Move the selected page later">Move ▶</button>
+          <span class="hint" style="margin:0">or drag pages to reorder · this is the order the clock flips and rotates through</span>
+        </div>
+        <div class="rot" id="rot">
+          <label class="check"><input id="rotate" type="checkbox"> Rotate pages every</label>
+          <select id="every" aria-label="Rotation interval"></select>
+          <span class="hint" id="rotHint" style="margin:0"></span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="head"><h2 id="pageTitle">Page 1</h2><span><button class="link" id="showOnClock">Show on clock</button><button class="link" id="removePage">Remove page</button></span></div>
+        <p class="sub">Up to three blocks, top to bottom. Select a block, then pick from the toolbox to replace it.</p>
+        <div class="blocks" id="blocks"></div>
+      </div>
+      <div class="card">
+        <h2>Toolbox</h2>
+        <p class="sub" id="toolHint">Pick a block to add it to the page.</p>
+        <div class="tabs" id="tabs" role="tablist"></div>
+        <div class="tiles" id="tiles"></div>
+      </div>
+      <div class="card">
+        <h2>Start from a preset</h2>
+        <p class="sub">Replaces the blocks on this page.</p>
+        <div class="tiles presets" id="presets"></div>
+      </div>
+      <div class="savebar" id="savebar" hidden>
+        <span class="msg">Unsaved changes — preview only</span>
+        <button id="revert">Revert</button>
+        <button class="primary" id="save">Save to clock</button>
+      </div>
+    </section>
+    <section id="status"><div class="card"><h2>Status</h2><dl id="statusList" style="margin-top:.8rem"></dl></div></section>
+    <section id="settings">
+      <div class="card"><h2>Settings</h2>
+        <label for="tz">Timezone</label><select id="tz"></select>
+        <label for="city">Location (for weather)</label>
+        <div class="find"><input id="city" type="text" placeholder="e.g. London" autocomplete="off"><button id="findCity" type="button">Find</button></div>
+        <div class="matches" id="matches"></div>
+        <p class="hint" id="coords"></p>
+        <label class="check" style="margin-top:1rem"><input id="beep" type="checkbox"> Beep when the clock syncs</label>
+        <label class="check" id="showIpRow"><input id="showIp" type="checkbox"> Show the IP address at the bottom of the clock</label>
+        <p class="hint" id="showIpHint" style="margin-top:0">Otherwise that line only appears when something needs attention (no Wi‑Fi, no time yet). The IP is always in the clock's Menu › Info.</p>
+        <div class="row"><button class="primary" id="saveSettings">Save</button></div>
+      </div>
+    </section>
+    <section id="device">
+      <div class="card"><h2>Device</h2>
+        <button id="btnBeep">Test beep</button>
+        <button id="btnWifi">Wi‑Fi setup</button>
+        <button class="danger" id="btnForget">Forget Wi‑Fi</button>
+        <p class="hint">Wi‑Fi setup opens the <b>CosmoLibre</b> hotspot; join it and browse to 192.168.4.1. The device leaves your network until setup finishes.</p>
+      </div>
+      <div class="card"><h2>Web UI</h2>
+        <p class="sub">Turning the web UI off stops this page and the clock's network service. Time and weather keep working.</p>
+        <button class="danger" id="btnWebUiOff">Turn off web UI</button>
+        <p class="hint">To turn it back on, use the clock: hold ● for the menu › Wi‑Fi › Web UI.</p>
+      </div>
+    </section>
+  </div>
+</main>
+<div id="toast" role="status"></div>
+<script>
+"use strict";
+const $ = s => document.querySelector(s);
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+// page = page being edited; clockPage = page the clock shows (follows reorders).
+const S = {cfg: null, st: null, pages: null, page: 0, clockPage: 0, slot: 0, tab: 1, rotate: false, every: 5};
+
+async function api(path, body) {
+  const opt = body ? {method: "POST", headers: {"X-Cosmo": "1", "Content-Type": "application/x-www-form-urlencoded"}, body: new URLSearchParams(body)} : {cache: "no-store"};
+  try {
+    const r = await fetch(path, opt);
+    const j = await r.json();
+    if (!r.ok && j.ok === undefined) j.ok = false;
+    return j;
+  } catch (e) { return {ok: false, error: "Device not reachable"}; }
+}
+
+let toastTimer;
+function toast(msg) {
+  const t = $("#toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 3200);
+}
+
+// ---- block catalogue (UI copy; IDs come from the firmware) ----------------
+const KIND = {1: "Time", 4: "Date", 3: "Weather", 2: "Greeting"};
+const KIND_ORDER = [1, 4, 3, 2];
+const DESC = {
+  "1:0": "Large hours over minutes, 24-hour", "1:1": "Large hours over minutes, 12-hour",
+  "1:2": "Hours and minutes on one line", "1:3": "One line with AM / PM", "1:4": "The time in words",
+  "4:0": "Day.month with the weekday", "4:1": "Month.day with the weekday", "4:2": "Day and month name",
+  "3:0": "Icon, temperature and today's high / low", "3:1": "Icon, temperature and the weekday",
+  "3:3": "Conditions in words with the temperature", "3:4": "Cloud cover, rain chance and humidity",
+  "3:5": "A large icon for the current weather", "3:2": "Three-day forecast",
+  "2:0": "GOOD MORNING / AFTERNOON / EVENING", "2:1": "Good morning / afternoon / evening",
+  "2:2": "good morning / afternoon / evening",
+};
+const key = s => s.kind + ":" + s.variant;
+const EMPTY = {kind: 0, variant: 0};
+const used = p => p.some(s => s.kind);
+const clonePages = ps => ps.map(p => p.map(s => ({...s})));
+function blockName(s) {
+  const o = S.cfg.slotOptions.find(o => key(o) === key(s));
+  if (!o || !s.kind) return {kind: "", variant: ""};
+  const parts = o.label.split(" · ");
+  return {kind: KIND[s.kind] || parts[0], variant: parts[1] || ""};
+}
+const faceUrl = slots => "/api/face.bmp?" + new URLSearchParams(Object.fromEntries(slots.map((s, i) => ["s" + i, key(s)])));
+const widgetUrl = s => "/api/widget.bmp?w=" + key(s) + "&m=" + thumbStamp;
+let thumbStamp = 0;  // bump to refresh time/weather in thumbnails
+
+// ---- model helpers --------------------------------------------------------
+const multiPage = () => !!(S.cfg && S.cfg.pages);
+function isDirty() {
+  if (!S.cfg || !S.pages) return false;
+  const saved = multiPage() ? S.cfg.pages : [S.cfg.slots];
+  if (JSON.stringify(S.pages) !== JSON.stringify(saved)) return true;
+  return multiPage() && (S.rotate !== S.cfg.rotate || S.every !== S.cfg.rotateMinutes ||
+                         S.clockPage !== (S.cfg.currentPage || 0));
+}
+function changed() { S.liveView = false; renderDisplay(); refreshScreen(); }
+
+/** Move page `from` to index `to`, keeping the edited/clock selections on their pages. */
+function movePage(from, to) {
+  if (from === to) return;
+  const [p] = S.pages.splice(from, 1);
+  S.pages.splice(to, 0, p);
+  const map = i => i === from ? to
+    : from < to ? (i > from && i <= to ? i - 1 : i)
+    : (i >= to && i < from ? i + 1 : i);
+  S.page = map(S.page); S.clockPage = map(S.clockPage);
+}
+/** Used pages first (in order), empty pages last — matches what the clock pages through. */
+function compactPages() {
+  for (let i = 0, last = S.pages.length - 1; i < last;) {
+    if (!used(S.pages[i]) && S.pages.slice(i + 1).some(used)) movePage(i, last); else i++;
+  }
+  if (!used(S.pages[S.clockPage] || [])) S.clockPage = Math.max(0, S.pages.findIndex(used));
+}
+const usedCount = () => S.pages.filter(used).length;
+function firstEmptySlot(p) { const i = p.findIndex(s => !s.kind); return i; }
+
+// ---- panel preview ------------------------------------------------------
+let screenTimer;
+function refreshScreen() {
+  clearTimeout(screenTimer);
+  screenTimer = setTimeout(() => {
+    const onDisplay = (location.hash || "#display") === "#display";
+    const editing = onDisplay && S.pages && !S.liveView &&
+                    (isDirty() || S.page !== (S.cfg.currentPage || 0));
+    let url;
+    if (editing) {
+      url = faceUrl(S.pages[S.page]) + "&t=" + Date.now();
+      $("#caption").textContent = `Page ${S.page + 1}` + (isDirty() ? " — unsaved preview" : " — preview");
+    } else {
+      // Preview server: the simulator also shows menus/alarms (real Ui.cpp).
+      url = (S.cfg && S.cfg.mock ? "/api/_screen.bmp?t=" : "/api/face.bmp?t=") + Date.now();
+      $("#caption").textContent = "Live panel render";
+    }
+    $("#screen").src = url;
+  }, 120);
+}
+
+// ---- display editor -------------------------------------------------------
+function renderDisplay() {
+  if (!S.cfg || !S.pages) return;
+  const multi = multiPage();
+  $("#pagesCard").hidden = !multi;
+  $("#removePage").hidden = !multi || S.pages.filter(used).length < 2 || !used(S.pages[S.page]);
+  $("#showOnClock").hidden = !multi || S.page === S.clockPage || !used(S.pages[S.page]);
+  $("#pageTitle").textContent = multi ? `Page ${S.page + 1}` + (S.page === S.clockPage && used(S.pages[S.page]) ? " · on clock" : "") : "Clock face";
+
+  // Pages strip
+  if (multi) {
+    const box = $("#pages"); box.textContent = "";
+    S.pages.forEach((p, i) => {
+      if (!used(p) && i !== S.page) return;
+      const b = el("button", "page" + (i === S.page ? " on" : ""));
+      if (used(p)) {
+        b.draggable = true;
+        b.addEventListener("dragstart", e => { e.dataTransfer.setData("text/plain", i); e.dataTransfer.effectAllowed = "move"; b.classList.add("dragging"); });
+        b.addEventListener("dragend", () => b.classList.remove("dragging"));
+        const side = e => e.offsetX < b.offsetWidth / 2 ? "dropbefore" : "dropafter";
+        b.addEventListener("dragover", e => { e.preventDefault(); b.classList.remove("dropbefore", "dropafter"); b.classList.add(side(e)); });
+        b.addEventListener("dragleave", () => b.classList.remove("dropbefore", "dropafter"));
+        b.addEventListener("drop", e => {
+          e.preventDefault();
+          const from = +e.dataTransfer.getData("text/plain");
+          let to = i + (side(e) === "dropafter" ? 1 : 0);
+          if (from < to) to--;
+          b.classList.remove("dropbefore", "dropafter");
+          if (Number.isInteger(from) && from !== to) { movePage(from, to); changed(); }
+        });
+      }
+      const img = el("img", "thumb"); img.alt = ""; img.src = faceUrl(p) + "&m=" + thumbStamp;
+      b.append(img, el("span", "", `Page ${i + 1}`));
+      if (i === S.clockPage && used(p)) b.append(el("span", "badge", "on clock"));
+      b.onclick = () => { S.page = i; S.slot = Math.max(0, firstEmptySlot(S.pages[i])); changed(); };
+      box.append(b);
+    });
+    const free = S.pages.findIndex((p, i) => !used(p) && i !== S.page && i >= usedCount());
+    if (free >= 0 && used(S.pages[S.page])) {
+      const add = el("button", "page add", "+ Add page");
+      add.onclick = () => { S.page = free; S.slot = 0; changed(); toast("New page — pick blocks from the toolbox or start from a preset"); };
+      box.append(add);
+    }
+    const sel = used(S.pages[S.page]), n0 = usedCount();
+    $("#pagebar").hidden = n0 < 2;
+    $("#moveLeft").disabled = !sel || S.page === 0;
+    $("#moveRight").disabled = !sel || S.page >= n0 - 1;
+    const ev = $("#every");
+    if (!ev.options.length) S.cfg.rotateChoices.forEach(m => ev.append(new Option(m + (m === 1 ? " minute" : " minutes"), m)));
+    ev.value = S.every; $("#rotate").checked = S.rotate;
+    const n = S.pages.filter(used).length;
+    $("#rotHint").textContent = n < 2 ? "Add a second page to rotate." : "";
+    $("#rotate").disabled = ev.disabled = n < 2;
+  }
+
+  // Blocks on the selected page
+  const page = S.pages[S.page];
+  const blocks = $("#blocks"); blocks.textContent = "";
+  page.forEach((s, i) => {
+    if (!s.kind) {
+      const b = el("button", "block empty" + (i === S.slot ? " on" : ""), i === S.slot ? "Pick a block from the toolbox ↓" : "+ Empty slot");
+      b.onclick = () => { S.slot = i; renderDisplay(); };
+      blocks.append(b);
+      return;
+    }
+    const n = blockName(s);
+    const b = el("div", "block" + (i === S.slot ? " on" : ""));
+    b.tabIndex = 0;
+    b.onclick = e => { if (e.target.closest(".acts")) return; S.slot = i; renderDisplay(); };
+    const img = el("img", "thumb"); img.alt = ""; img.src = widgetUrl(s);
+    const txt = el("div"); txt.append(el("div", "t", n.kind + " · " + n.variant), el("div", "d", DESC[key(s)] || ""));
+    const acts = el("div", "acts");
+    [["↑", "Move up", -1], ["↓", "Move down", 1]].forEach(([t, title, d]) => {
+      const mv = el("button", "", t); mv.title = title;
+      const j = i + d; mv.disabled = j < 0 || j >= page.length;
+      mv.onclick = () => { [page[i], page[j]] = [page[j], page[i]]; S.slot = j; changed(); };
+      acts.append(mv);
+    });
+    const rm = el("button", "", "✕"); rm.title = "Remove block";
+    rm.onclick = () => { page.splice(i, 1); page.push({...EMPTY}); S.slot = Math.max(0, firstEmptySlot(page)); changed(); };
+    acts.append(rm);
+    b.append(img, txt, acts);
+    blocks.append(b);
+  });
+
+  // Toolbox
+  const cur = page[S.slot];
+  $("#toolHint").textContent = cur && cur.kind ? `Pick a block to replace ${blockName(cur).kind} · ${blockName(cur).variant}.` : `Pick a block to add it as block ${S.slot + 1}.`;
+  const tabs = $("#tabs"); tabs.textContent = "";
+  KIND_ORDER.forEach(k => {
+    const t = el("button", k === S.tab ? "on" : "", KIND[k]);
+    t.setAttribute("role", "tab"); t.setAttribute("aria-selected", k === S.tab);
+    t.onclick = () => { S.tab = k; renderDisplay(); };
+    tabs.append(t);
+  });
+  const tiles = $("#tiles"); tiles.textContent = "";
+  S.cfg.slotOptions.filter(o => o.kind === S.tab).forEach(o => {
+    const t = el("button", "tile" + (cur && key(cur) === key(o) ? " on" : ""));
+    const wrap = el("div", "thumbwrap"); const img = el("img", "thumb"); img.alt = ""; img.loading = "lazy"; img.src = widgetUrl(o); wrap.append(img);
+    t.append(wrap, el("div", "t", blockName(o).variant || KIND[o.kind]), el("div", "d", DESC[key(o)] || ""));
+    t.onclick = () => {
+      page[S.slot] = {kind: o.kind, variant: o.variant};
+      const next = firstEmptySlot(page);
+      if (next >= 0) S.slot = next;
+      changed();
+    };
+    tiles.append(t);
+  });
+
+  // Presets
+  const pr = $("#presets"); pr.textContent = "";
+  S.cfg.presets.forEach(p => {
+    const t = el("button", "tile");
+    const img = el("img", "thumb"); img.alt = ""; img.loading = "lazy"; img.src = faceUrl(p.slots) + "&m=" + thumbStamp;
+    const txt = el("div");
+    txt.append(el("div", "t", p.name), el("div", "d", p.slots.filter(s => s.kind).map(s => KIND[s.kind]).join(" + ")));
+    t.append(img, txt);
+    t.onclick = () => { S.pages[S.page] = p.slots.map(s => ({...s})); S.slot = 0; changed(); };
+    pr.append(t);
+  });
+
+  $("#savebar").hidden = !isDirty();
+}
+
+$("#rotate").onchange = () => { S.rotate = $("#rotate").checked; changed(); };
+$("#every").onchange = () => { S.every = +$("#every").value; changed(); };
+$("#removePage").onclick = () => {
+  S.pages[S.page] = S.pages[S.page].map(() => ({...EMPTY}));
+  compactPages();
+  S.page = Math.min(S.page, usedCount() - 1); S.slot = 0; changed();
+};
+$("#moveLeft").onclick = () => { movePage(S.page, S.page - 1); changed(); };
+$("#moveRight").onclick = () => { movePage(S.page, S.page + 1); changed(); };
+$("#showOnClock").onclick = () => { S.clockPage = S.page; changed(); };
+$("#revert").onclick = () => { loadDraft(true); changed(); };
+$("#save").onclick = async () => {
+  if (!S.pages.some(used)) return toast("Add at least one block");
+  compactPages();
+  if (!used(S.pages[S.page])) S.page = S.pages.findIndex(used);
+  let r;
+  if (multiPage()) {
+    const body = {current: S.clockPage, rotate: S.rotate ? 1 : 0, every: S.every};
+    S.pages.forEach((p, i) => body["p" + i] = p.map(key).join(","));
+    r = await api("/api/pages", body);
+  } else {
+    const body = {}; S.pages[0].forEach((s, i) => body["s" + i] = key(s));
+    r = await api("/api/face", body);
+  }
+  if (!r.ok) return toast(r.error || "Save failed");
+  toast(multiPage() ? `Saved — the clock shows page ${S.clockPage + 1}` : "Saved — the display will refresh");
+  await loadConfig(true); refreshScreen();
+};
+
+function loadDraft(force) {
+  if (!force && S.pages && isDirty()) return;  // keep unsaved edits
+  const c = S.cfg;
+  S.pages = clonePages(multiPage() ? c.pages : [c.slots]);
+  S.rotate = !!c.rotate; S.every = c.rotateMinutes || 5;
+  S.clockPage = multiPage() ? (c.currentPage || 0) : 0;
+  if (multiPage()) compactPages();
+  if (!multiPage() || !used(S.pages[S.page] || [])) S.page = S.clockPage;
+  S.slot = Math.max(0, firstEmptySlot(S.pages[S.page]));
+}
+
+// ---- status --------------------------------------------------------------
+function fmtUptime(s) {
+  const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
+  return (d ? d + "d " : "") + (h || d ? h + "h " : "") + m + "m";
+}
+function renderStatus() {
+  const s = S.st; if (!s) return;
+  const pill = $("#pill");
+  pill.textContent = s.synced ? (s.time || "").slice(0, 5) + " · " + s.state : s.state;
+  pill.className = "pill " + (s.synced ? "ok" : "warn");
+  const wx = s.weather && s.weather.valid ? `${s.weather.tempNow}°C ${s.weather.label.toLowerCase()} · cloud ${s.weather.cloud}% · humidity ${s.weather.humidity}%` : "—";
+  const rows = [["Time", s.synced ? s.time : "not synced"], ["Date", s.date || "—"], ["Timezone", s.tz], ["Location", s.location || "—"], ["Weather", wx],
+    ["IP", s.ip || "—"], ["Wi‑Fi", s.ssid ? `${s.ssid} (${s.rssi} dBm)` : "—"], ["Network", s.state], ["Uptime", fmtUptime(s.uptime)], ["Free heap", s.heap + " B"], ["Firmware", s.fw]];
+  const dl = $("#statusList"); dl.textContent = "";
+  rows.forEach(([k, v]) => dl.append(el("dt", "", k), el("dd", "", v)));
+}
+
+// ---- settings ------------------------------------------------------------
+S.pick = null;  // chosen geocode match {name, region, country, lat, lon}
+
+function locText(l) { return `${l.lat.toFixed(2)}, ${l.lon.toFixed(2)}`; }
+function showCoords() {
+  const c = S.cfg, e = $("#coords");
+  if (S.pick) e.textContent = `Selected ${[S.pick.name, S.pick.region, S.pick.country].filter(Boolean).join(", ")} (${locText(S.pick)}) — press Save`;
+  else e.textContent = c.location ? `Current: ${c.location.label} (${locText(c.location)})` : "No location — weather blocks will show “set location”.";
+}
+function renderSettings() {
+  const c = S.cfg, tz = $("#tz"); tz.textContent = "";
+  c.timezones.forEach((t, i) => { const o = new Option(t, i); o.selected = i === c.tzId; tz.append(o); });
+  $("#city").value = c.location ? c.location.label : "";
+  S.pick = null; $("#matches").textContent = "";
+  $("#beep").checked = c.beepOnSync;
+  // Older firmware doesn't have this option yet.
+  $("#showIpRow").hidden = $("#showIpHint").hidden = c.showIp === undefined;
+  $("#showIp").checked = !!c.showIp;
+  showCoords();
+}
+
+async function findCity() {
+  const q = $("#city").value.trim();
+  const box = $("#matches"); box.textContent = "";
+  if (!q) return;
+  const b = $("#findCity"); b.disabled = true; b.textContent = "…";
+  const r = await api("/api/geocode?q=" + encodeURIComponent(q));
+  b.disabled = false; b.textContent = "Find";
+  if (!r.ok) return toast(r.error || "Lookup failed");
+  if (!r.results.length) return toast("No places found for “" + q + "”");
+  r.results.forEach(m => {
+    const btn = el("button", "match", m.name); btn.type = "button";
+    btn.append(el("span", "", [m.region, m.country].filter(Boolean).join(", ")));
+    btn.onclick = () => {
+      S.pick = m; $("#city").value = m.name;
+      box.querySelectorAll(".match").forEach(x => x.classList.toggle("on", x === btn));
+      showCoords();
+    };
+    box.append(btn);
+  });
+  if (r.results.length === 1) box.firstChild.click();
+}
+$("#findCity").onclick = findCity;
+$("#city").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); findCity(); } });
+$("#city").addEventListener("input", () => { S.pick = null; $("#matches").textContent = ""; showCoords(); });
+["#tz", "#city", "#beep", "#showIp"].forEach(sel => $(sel).addEventListener("input", () => { S.settingsDirty = true; }));
+
+$("#saveSettings").onclick = async () => {
+  const city = $("#city").value.trim(), cur = S.cfg.location;
+  const body = {tz: $("#tz").value, beep: $("#beep").checked ? 1 : 0, city};
+  if (S.cfg.showIp !== undefined) body.showIp = $("#showIp").checked ? 1 : 0;
+  if (S.pick) Object.assign(body, {city: S.pick.name, lat: S.pick.lat, lon: S.pick.lon});
+  else if (city && (!cur || city !== cur.label)) { await findCity(); return toast("Choose the right place from the list, then Save"); }
+  const b = $("#saveSettings"); b.disabled = true; b.textContent = "Saving…";
+  const r = await api("/api/settings", body);
+  b.disabled = false; b.textContent = "Save";
+  if (!r.ok) return toast(r.error || "Save failed");
+  toast(r.warning || "Settings saved");
+  S.settingsDirty = false;
+  thumbStamp++;
+  await loadConfig(); await loadStatus(); refreshScreen();
+};
+
+// ---- device --------------------------------------------------------------
+$("#btnBeep").onclick = async () => { const r = await api("/api/beep", {}); toast(r.ok ? "Beep!" : r.error); };
+$("#btnWifi").onclick = async () => {
+  if (!confirm("Open Wi‑Fi setup? The clock leaves your network until setup finishes.")) return;
+  const r = await api("/api/wifi", {}); toast(r.ok ? "Join the CosmoLibre hotspot, then open 192.168.4.1" : r.error);
+};
+$("#btnWebUiOff").onclick = async () => {
+  if (!confirm("Turn off the web UI?\n\nThis page will stop working. You can only turn it back on from the clock: hold the middle pad › Wi‑Fi › Web UI.")) return;
+  const r = await api("/api/webui", {on: 0});
+  toast(r.ok ? "Web UI turned off — re-enable it from the clock's menu" : (r.error || "Failed"));
+};
+$("#btnForget").onclick = async () => {
+  if (!confirm("Erase saved Wi‑Fi and reboot into setup mode?")) return;
+  const r = await api("/api/forget", {}); toast(r.ok ? "Forgetting Wi‑Fi and rebooting…" : r.error);
+};
+
+// ---- preview-only mock controls -----------------------------------------
+const WX_CODES = [[0, "Clear"], [2, "Slightly cloudy"], [3, "Overcast"], [45, "Fog"], [53, "Drizzle"], [63, "Rain"], [73, "Snow"], [95, "Thunderstorm"]];
+function setupMock(m) {
+  $("#mock").hidden = false;
+  const sel = $("#mCode"); sel.textContent = "";
+  WX_CODES.forEach(([c, l]) => sel.append(new Option(l, c)));
+  $("#mTime").value = m.time; $("#mDate").value = m.date; $("#mTemp").value = m.temp; sel.value = m.code;
+  $("#mSynced").checked = m.synced; $("#mWx").checked = m.wx;
+  const push = async () => {
+    await api("/api/_mock", {time: $("#mTime").value, date: $("#mDate").value, temp: $("#mTemp").value, code: sel.value, synced: $("#mSynced").checked ? 1 : 0, wx: $("#mWx").checked ? 1 : 0});
+    thumbStamp++;
+    await loadStatus(); renderDisplay(); refreshScreen();
+  };
+  ["#mTime", "#mDate", "#mTemp", "#mCode", "#mSynced", "#mWx"].forEach(s => $(s).addEventListener("change", push));
+}
+
+// ---- touch-pad simulator (preview only) -----------------------------------
+let audioCtx;
+function beep(vol) {
+  try {
+    audioCtx = audioCtx || new AudioContext();
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.frequency.value = 440; g.gain.value = 0.25 * vol;
+    o.connect(g).connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime + 0.15);
+  } catch (e) {}
+}
+function playSound(st) {
+  if (!st.sound) return;
+  const vol = Math.max(0, Math.min(1, (st.volume ?? 6) / 10));
+  if (st.sound === "beep") return beep(vol);
+  const a = new Audio("/api/_sound/" + st.sound + ".wav"); a.volume = vol; a.play().catch(() => {});
+}
+const ACTION_TEXT = {portal: "Device would open the Wi‑Fi setup hotspot", forget: "Device would forget Wi‑Fi and restart",
+  webui: "Web UI switched on the device (preview keeps serving this page)",
+  sync: "Device would re-sync the time and weather"};
+function handleSim(st) {
+  if (!st || st.ok === false) return;
+  playSound(st);
+  st.actions.filter(a => ACTION_TEXT[a]).forEach(a => toast(ACTION_TEXT[a]));
+  S.fast = st.inMenu || st.timer || st.ringing;
+  // The clock owns page selection / rotation: reflect changes made with the pads.
+  if (S.cfg && multiPage() && (st.face !== S.cfg.currentPage || st.rotate !== S.cfg.rotate || st.every !== S.cfg.rotateMinutes)) {
+    const wasDirty = isDirty();
+    S.cfg.currentPage = st.face; S.cfg.rotate = st.rotate; S.cfg.rotateMinutes = st.every;
+    if (!wasDirty) { S.rotate = st.rotate; S.every = st.every; S.clockPage = st.face; }
+    renderDisplay();
+  }
+  refreshScreen();
+}
+async function pressPad(pad, gesture) {
+  S.liveView = true;  // show the real screen (menus) until the editor is used again
+  handleSim(await api("/api/_pad", {pad, gesture}));
+}
+function setupPads() {
+  $("#pads").hidden = false;
+  document.querySelectorAll(".pad").forEach(b => {
+    let t0 = 0;
+    b.addEventListener("pointerdown", e => { t0 = performance.now(); b.classList.add("down"); b.setPointerCapture(e.pointerId); });
+    b.addEventListener("pointerup", () => {
+      b.classList.remove("down");
+      if (t0) pressPad(b.dataset.pad, performance.now() - t0 >= 600 ? "hold" : "tap");
+      t0 = 0;
+    });
+    b.addEventListener("pointercancel", () => { b.classList.remove("down"); t0 = 0; });
+  });
+  document.addEventListener("keydown", e => {
+    if (e.target.closest("input,select,textarea") || e.repeat) return;
+    const pad = {ArrowLeft: "L", ArrowRight: "R", Enter: "M", " ": "M"}[e.key];
+    if (!pad || e.target.closest("button:not(.pad)")) return;
+    e.preventDefault();
+    pressPad(pad, e.shiftKey ? "hold" : "tap");
+  });
+  // Fast refresh while a menu/timer/alarm is active; slow poll catches alarms.
+  setInterval(async () => { if (S.fast) handleSim(await api("/api/_state")); }, 1000);
+  setInterval(async () => { if (!S.fast) handleSim(await api("/api/_state")); }, 10000);
+}
+
+// ---- routing / loading ---------------------------------------------------
+function route() {
+  let tab = (location.hash || "#display").slice(1);
+  if (tab === "face") tab = "display";  // old links
+  document.querySelectorAll("section").forEach(s => s.classList.toggle("on", s.id === tab));
+  document.querySelectorAll("nav a").forEach(a => a.classList.toggle("on", a.hash === "#" + tab));
+  refreshScreen();
+}
+window.addEventListener("hashchange", route);
+
+async function loadConfig(forceDraft) {
+  const c = await api("/api/config");
+  if (c.ok === false) { toast(c.error); return; }
+  S.cfg = c;
+  loadDraft(forceDraft);
+  renderDisplay();
+  if (!S.settingsDirty) renderSettings();
+  if (c.mock && $("#mock").hidden) { setupMock(c.mock); setupPads(); }
+}
+async function loadStatus() {
+  const s = await api("/api/status");
+  if (s.ok === false) { $("#pill").textContent = "offline"; $("#pill").className = "pill warn"; return; }
+  S.st = s; renderStatus();
+}
+
+let lastMinute = "";
+async function tick() {
+  await loadStatus();
+  const m = S.st && S.st.time ? S.st.time.slice(0, 5) : "";
+  if (m !== lastMinute) { lastMinute = m; refreshScreen(); }
+}
+
+route();
+(async () => { await loadConfig(); await loadStatus(); refreshScreen(); setInterval(tick, 10000); })();
+</script>
+</body>
+</html>
