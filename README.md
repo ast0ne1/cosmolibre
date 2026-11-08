@@ -146,9 +146,11 @@ relying on it, and please open an issue if you spot something wrong.
 - **Wi‑Fi on battery** is still being tested. The panel's refresh and the
   radio together draw more than the battery circuit likes; power saver is the
   current fix.
-- **Air quality (VOC) and room temperature.** The original firmware reads them,
-  but the sensor chips and their wiring haven't been identified yet — nothing
-  answers on the obvious pins. **Help wanted.**
+- **Air quality (VOC) and room temperature.** The original firmware reads them.
+  The VOC sensor is a GY‑SGP40 (Sensirion SGP40, I²C), but which pins it's
+  wired to isn't known yet, and the SGP40 has no temperature sensor, so where
+  room temperature came from is still open.
+  **Help wanted** — see [issue 10](https://github.com/ast0ne1/cosmolibre/issues/10).
 - **Battery level** — the measuring circuit isn't understood yet.
 - **Original alarm chimes** — alarms play a beep pattern for now.
 - **Firmware updates from the web UI** (upload a new version over Wi‑Fi) —
