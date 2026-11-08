@@ -146,10 +146,12 @@ relying on it, and please open an issue if you spot something wrong.
 - **Wi‑Fi on battery** is still being tested. The panel's refresh and the
   radio together draw more than the battery circuit likes; power saver is the
   current fix.
-- **Air quality (VOC) and room temperature.** The original firmware reads them.
-  The VOC sensor is a GY‑SGP40 (Sensirion SGP40, I²C), but which pins it's
-  wired to isn't known yet, and the SGP40 has no temperature sensor, so where
-  room temperature came from is still open.
+- **Air quality (VOC) and room temperature.** The original had a *Time & Air*
+  app (VOC) and a *Time & Room* app (indoor temperature); indoor humidity was
+  never a feature. The VOC sensor is a GY‑SGP40 (Sensirion SGP40, I²C) — an
+  optional add‑on, so not every clock has one. Which pins it's wired to isn't
+  known yet (probably D1/D2), and the SGP40 doesn't measure temperature, so
+  where room temperature came from is still open.
   **Help wanted** — see [issue 10](https://github.com/ast0ne1/cosmolibre/issues/10).
 - **Battery level** — the measuring circuit isn't understood yet.
 - **Original alarm chimes** — alarms play a beep pattern for now.
@@ -168,7 +170,7 @@ What's been confirmed on a real unit:
 | Display pins | CS 15 · DC 4 · RST 5 · BUSY 16 · SCK 14 · MOSI 13 (HSPI) |
 | Touch | 3 pads on top, read through A0 (left ≈ 190, middle ≈ 15) plus GPIO2 |
 | Speaker | MAX98357A on the ESP8266's I²S pins: BCLK 15 · LRC 2 · DIN 3 |
-| Air quality | GY‑SGP40 breakout (Sensirion SGP40, I²C 0x59) on the carrier board — SDA/SCL pins not confirmed yet, probably D6/D3 ([issue 10](https://github.com/ast0ne1/cosmolibre/issues/10)) |
+| Air quality | GY‑SGP40 breakout (Sensirion SGP40, I²C 0x59) on the carrier board, an optional add‑on — SDA/SCL pins not confirmed yet: no reply on GPIO 0/2/12, so probably D1/D2, shared with the display ([issue 10](https://github.com/ast0ne1/cosmolibre/issues/10)) |
 | Power | Li‑ion cell with a power switch; HW‑373 (TP4056) charger, charge‑only — the clock always runs from the cell, even on USB |
 
 The amplifier shares GPIO15 with the display's chip select, GPIO2 with the
@@ -181,12 +183,12 @@ The D1 mini's pins are labelled, which helps when tracing the board:
 |---|---|---|
 | A0 | ADC | Touch pads |
 | D0 | 16 | Display BUSY |
-| D1 | 5 | Display RST |
-| D2 | 4 | Display DC |
-| D3 | 0 | Free? (probably the SGP40) |
+| D1 | 5 | Display RST (probably also the SGP40's SCL) |
+| D2 | 4 | Display DC (probably also the SGP40's SDA) |
+| D3 | 0 | Free (I²C scan: no reply) |
 | D4 | 2 | Touch pads · speaker LRC |
 | D5 | 14 | Display SCK |
-| D6 | 12 | Free? (probably the SGP40) |
+| D6 | 12 | Free (I²C scan: no reply) |
 | D7 | 13 | Display MOSI |
 | D8 | 15 | Display CS · speaker BCLK |
 | RX | 3 | Speaker DIN (and serial RX) |
@@ -283,8 +285,9 @@ The full on‑clock behaviour is described in [docs/device-ux.md](docs/device-ux
 Issues, forks and pull requests are welcome. Especially valuable:
 
 - **VOC / temperature sensor** — the VOC chip is a GY‑SGP40 (SGP40, I²C 0x59);
-  still needed: which D1 mini pins it's wired to (probably D6/D3), and where
-  room temperature comes from, since the SGP40 doesn't measure it. A continuity
+  still needed: which D1 mini pins it's wired to (probably D1/D2, shared with
+  the display), and where room temperature comes from, since the SGP40 doesn't
+  measure it. A continuity
   check or a capture of the original firmware's air‑quality screen would settle
   both ([issue 10](https://github.com/ast0ne1/cosmolibre/issues/10))
 - **Battery level** and charging state
