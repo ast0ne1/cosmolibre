@@ -162,17 +162,35 @@ What's been confirmed on a real unit:
 
 | Part | Details |
 |---|---|
-| MCU | ESP8266EX, 4 MB flash, 26 MHz crystal |
-| USB serial | CH340 |
+| MCU | WeMos D1 mini (or clone) on a carrier board: ESP8266EX, 4 MB flash, 26 MHz crystal |
+| USB serial | CH340, on the D1 mini (its micro‑USB port) |
 | Display | 3.7" e‑paper, ED037TC1, 280×480, SSD1677 — GxEPD2 `GxEPD2_370_TC1` |
 | Display pins | CS 15 · DC 4 · RST 5 · BUSY 16 · SCK 14 · MOSI 13 (HSPI) |
 | Touch | 3 pads on top, read through A0 (left ≈ 190, middle ≈ 15) plus GPIO2 |
 | Speaker | MAX98357A on the ESP8266's I²S pins: BCLK 15 · LRC 2 · DIN 3 |
+| Air quality | GY‑SGP40 breakout (Sensirion SGP40, I²C 0x59) on the carrier board — SDA/SCL pins not confirmed yet, probably D6/D3 ([issue 10](https://github.com/ast0ne1/cosmolibre/issues/10)) |
 | Power | Li‑ion cell with a power switch; HW‑373 (TP4056) charger, charge‑only — the clock always runs from the cell, even on USB |
 
 The amplifier shares GPIO15 with the display's chip select, GPIO2 with the
 touch pads and GPIO3 with serial RX, so the firmware never plays sound while
 drawing, and serial output can glitch during playback.
+
+The D1 mini's pins are labelled, which helps when tracing the board:
+
+| D1 mini pin | GPIO | Used for |
+|---|---|---|
+| A0 | ADC | Touch pads |
+| D0 | 16 | Display BUSY |
+| D1 | 5 | Display RST |
+| D2 | 4 | Display DC |
+| D3 | 0 | Free? (probably the SGP40) |
+| D4 | 2 | Touch pads · speaker LRC |
+| D5 | 14 | Display SCK |
+| D6 | 12 | Free? (probably the SGP40) |
+| D7 | 13 | Display MOSI |
+| D8 | 15 | Display CS · speaker BCLK |
+| RX | 3 | Speaker DIN (and serial RX) |
+| TX | 1 | Serial log |
 
 ## Install
 
