@@ -174,8 +174,9 @@ drawing, and serial output can glitch during playback.
 
 ## Install
 
-You need a USB cable, a computer, [PlatformIO](https://platformio.org) (VS Code
-extension, or `pip install platformio`) and `esptool` (`pip install esptool`).
+You need a USB cable, a computer and `esptool` (`pip install esptool`). To
+build the firmware yourself you also need [PlatformIO](https://platformio.org)
+(VS Code extension, or `pip install platformio`).
 
 ### 1. Back up your clock
 
@@ -196,7 +197,13 @@ time:
 esptool --port COM4 --baud 115200 write-flash 0x0 cosmo2-original.bin
 ```
 
-### 2. Build
+### 2. Get the firmware
+
+**Download it (easiest):** grab `cosmolibre-<version>.bin` from the latest
+[release](https://github.com/ast0ne1/cosmolibre/releases/latest). The release
+notes list its SHA‑256 checksum if you want to check the download.
+
+**Or build it yourself:**
 
 ```bash
 cd firmware/cosmo
@@ -208,9 +215,19 @@ automatically.
 
 ### 3. Flash
 
+With the downloaded file — it's the complete image, written at address `0x0`:
+
+```bash
+esptool --port COM4 --baud 115200 write-flash 0x0 cosmolibre-0.1.0.bin
+```
+
+Or, if you built it yourself:
+
 ```bash
 pio run -t upload --upload-port COM4
 ```
+
+Either way your saved Wi‑Fi is kept.
 
 ### 4. Connect to Wi‑Fi
 
