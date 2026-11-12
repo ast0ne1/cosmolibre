@@ -127,6 +127,44 @@ bool Net::staUp() const {
   return true;
 }
 
+/**
+ * Join from a RAM copy of the credentials — the same call as a power saver
+ * wake, which has always connected within seconds. persistent(false): only
+ * the SDK's *current* config is set, nothing is written to flash.
+ *
+ * Why not WiFi.begin() / begin(ssid, psk) with persistence on: begin() with
+ * persistence compares against the *flash* config and, when that matches,
+ * leaves the current config alone. After WiFi.disconnect() (which empties the
+ * current config) that meant connecting with an empty SSID — the old second
+ * try and every background retry could never succeed.
+ *
+ * wifi_station_disconnect() is the SDK call: it stops the connect attempt the
+ * SDK starts by itself at power-on, so we join from a clean state. It erases
+ * nothing (unlike WiFi.disconnect()).
+ */
+static void staJoin(const char *ssid, const char *psk) {
+  wifi_station_disconnect();
+  delay(100);
+  WiFi.persistent(false);
+  WiFi.begin(ssid, psk);
+  WiFi.persistent(true);
+}
+
+/** Boot log: what the SDK has stored, and which channels it may use. */
+static void logStationSetup() {
+  struct station_config sc;
+  memset(&sc, 0, sizeof(sc));
+  wifi_station_get_config_default(&sc);
+  Serial.printf("Stored config: bssid_set=%u auth>=%u rssi>=%d\n", sc.bssid_set,
+                (unsigned)sc.threshold.authmode, sc.threshold.rssi);
+  wifi_country_t c;
+  memset(&c, 0, sizeof(c));
+  if (wifi_get_country(&c)) {
+    Serial.printf("Country %.2s channels %u-%u policy=%u\n", c.cc, c.schan,
+                  c.schan + c.nchan - 1, c.policy);
+  }
+}
+
 static bool waitSta(uint32_t timeoutMs, NetProgressFn onProgress) {
   uint32_t t0 = millis();
   uint32_t lastUi = 0;
@@ -225,18 +263,12 @@ void Net::begin(NetProgressFn onProgress) {
     onProgress(joinMsg);
   }
 
-  // Prefer SDK-stored creds (begin()) — matches the session that got NTP working.
   // Do NOT open SoftAP on failure: that kept the radio from clean STA retries.
+  logStationSetup();
   WiFi.setAutoReconnect(true);
   for (uint8_t attempt = 1; attempt <= 2; attempt++) {
     Serial.printf("STA try %u/2\n", attempt);
-    if (attempt > 1) {
-      disconnectKeepCreds();
-      delay(500);
-      WiFi.begin(ssid.c_str(), psk.c_str());
-    } else {
-      WiFi.begin();
-    }
+    staJoin(ssid_, psk_);
     if (waitSta(35000, onProgress)) {
       cacheIp();
       Serial.printf("WiFi OK ip=%s RSSI=%d ssid=%s\n", ip_, WiFi.RSSI(),
@@ -334,11 +366,24 @@ void Net::scanForDiagnostics() {
     return;
   }
   int best = -1;
+  uint16_t channels = 0;  // bit c = something on channel c
   for (int i = 0; i < n; i++) {
+    const int ch = WiFi.channel(i);
+    if (ch > 0 && ch < 16) {
+      channels |= 1u << ch;
+    }
     if (WiFi.SSID(i) == ssid_ && (best < 0 || WiFi.RSSI(i) > WiFi.RSSI(best))) {
       best = i;
     }
   }
+  char chList[40] = "";
+  for (int ch = 1; ch < 16; ch++) {
+    if (channels & (1u << ch)) {
+      const size_t len = strlen(chList);
+      snprintf(chList + len, sizeof(chList) - len, len ? ",%d" : "%d", ch);
+    }
+  }
+  Serial.printf("Scan: channels in use %s\n", chList);
   if (best < 0) {
     Serial.printf("Scan: %d networks, '%s' not among them\n", n, ssid_);
     snprintf(scanNote_, sizeof(scanNote_), "0/%d", n);
@@ -541,8 +586,7 @@ void Net::update() {
         // back to modem sleep once connected).
         WiFi.setSleepMode(WIFI_NONE_SLEEP);
         WiFi.setOutputPower(kTxDbm);
-        // SDK-stored credentials; begin() without args writes nothing to flash.
-        WiFi.begin();
+        staJoin(ssid_, psk_);  // RAM credentials; nothing written to flash
       }
     }
     return;
