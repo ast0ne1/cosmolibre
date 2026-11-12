@@ -242,7 +242,7 @@ automatically.
 With the downloaded file — it's the complete image, written at address `0x0`:
 
 ```bash
-esptool --port COM4 --baud 115200 write-flash 0x0 cosmolibre-0.1.0.bin
+esptool --port COM4 --baud 115200 write-flash 0x0 cosmolibre-0.2.0.bin
 ```
 
 Or, if you built it yourself:
