@@ -242,7 +242,7 @@ def portal_page(path: str, q: dict) -> bytes:
 def status_json() -> dict:
     n = mock_now()
     s = {
-        "fw": "0.2.0-preview", "uptime": int((dt.datetime.now() - STATE["started"]).total_seconds()),
+        "fw": "0.2.1-preview", "uptime": int((dt.datetime.now() - STATE["started"]).total_seconds()),
         "heap": 23456, "ip": "192.168.1.20", "ssid": "HomeNetwork", "rssi": -58,
         "state": "ntp ok" if STATE["synced"] else "ntp...", "stateId": 5,
         "synced": STATE["synced"], "tz": TABLES["timezones"][STATE["tzId"]],
