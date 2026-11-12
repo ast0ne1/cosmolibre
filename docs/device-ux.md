@@ -30,8 +30,8 @@ offers what works well with three touch pads.
 | Hold Middle | Open the menu |
 
 **Status line (bottom left):** empty when all is well. It appears only when
-something needs attention — joining Wi‑Fi, no connection (`wifi fail r<code>`,
-where the code is the Wi‑Fi disconnect reason), waiting for the time — or while
+something needs attention — joining Wi‑Fi, no connection (`wifi r<code>`, see
+*Wi‑Fi power saver* below), waiting for the time — or while
 a timer or snooze is counting down. *Show IP address* (web UI › Settings) keeps
 the IP there permanently. Page dots appear bottom right when there are two or
 more pages.
@@ -108,8 +108,15 @@ in the header, a dot cursor, line icons, letter‑spaced capitals:
 - About every **45 minutes** it wakes, just after a minute change (so it doesn't
   coincide with a screen refresh), re-syncs the time and weather, and switches
   off again — usually within 10–15 seconds.
-- If a wake can't connect, it tries again after 10 minutes and the status line
-  shows `wifi fail r<code>`.
+- If the clock can't join (at start-up, on a wake, or after losing the
+  connection), the radio switches **off** between attempts in either mode. It
+  tries again after 2, 5, 10, 15 and then every 30 minutes; *Sync clock* or
+  *Connect* retries at once.
+- While it can't join, the status line shows `wifi r<code>`, where the code is
+  the Wi‑Fi disconnect reason (201 = network not found, 15 = wrong password,
+  254 = joined but no time server answered). After a failed start-up it also
+  shows what the radio could see: `none` (no networks at all), `0/7` (seven
+  networks, yours not among them) or `-61 c6` (yours, at −61 dBm on channel 6).
 - While the web UI is open in a browser, the clock stays connected.
 - *Mode › Always* keeps the old always-connected behaviour.
 

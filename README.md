@@ -118,8 +118,10 @@ relying on it, and please open an issue if you spot something wrong.
   runs the radio during a screen refresh. Choose **Always** to stay connected.
 - A simple **setup page**: pick your network from a list of what the clock can
   see, type the password, done.
-- If Wi‑Fi fails, the status line shows the reason code (`wifi fail r201` =
-  network not found) — handy when the clock is on battery with no USB.
+- If Wi‑Fi fails, the radio switches off between retries, and the status line
+  shows the reason code and what the clock could see (`wifi r201 0/7` =
+  network not found, seven others visible) — handy when the clock is on
+  battery with no USB.
 
 **In the browser (served by the clock — no app, no cloud)**
 - **Display** — design pages from a **toolbox of blocks**, each variant shown

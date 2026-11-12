@@ -67,7 +67,11 @@ static void refreshStatusFromNet() {
   } else if (g_net.state() == NetState::Asleep || g_net.state() == NetState::Waking) {
     // Power saver: radio off between syncs is normal. Only a failed wake shows.
     if (g_net.wakeFailReason()) {
-      snprintf(g_status, sizeof(g_status), "wifi fail r%u", g_net.wakeFailReason());
+      // Reason code, plus what the radio could see after a failed boot join
+      // ("none", "0/7", "-61 c6": see Net::scanNote), so a clock with no
+      // serial cable can still be diagnosed from its screen.
+      snprintf(g_status, sizeof(g_status), "wifi r%u%s%s", g_net.wakeFailReason(),
+               g_net.scanNote()[0] ? " " : "", g_net.scanNote());
     } else {
       g_status[0] = 0;
     }
@@ -333,7 +337,7 @@ void setup() {
   g_net.setPowerSaver(!g_settings.ui().wifiAlways);  // now that settings are loaded
   g_net.setTimezone(g_settings.tzPosix());
   g_audio.setVolume(g_settings.ui().volume);
-  if (g_settings.hasLocation()) {
+  if (g_settings.hasLocation() && g_net.wifiConnected()) {
     g_weather.update(g_settings.latitude(), g_settings.longitude(), true);
   }
   g_web.setEnabled(g_settings.ui().webUi);
@@ -449,7 +453,7 @@ void loop() {
   }
 
   // Full-screen "Wi‑Fi failed" card only while there's no time to show.
-  g_ui.setCard(g_net.state() == NetState::Failed && !g_net.timeSynced()
+  g_ui.setCard(g_net.joinFailing() && !g_net.timeSynced()
                    ? Ui::Card::WifiFailed
                    : Ui::Card::None);
 

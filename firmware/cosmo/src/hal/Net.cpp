@@ -10,11 +10,18 @@
 
 static const char *kApName = "CosmoLibre";
 
-// After a drop: try to re-join every kRetryMs; each attempt gets kAttemptMs of
-// radio quiet (no automatic e-paper refresh), leaving a gap for the clock to
-// update between attempts.
-static constexpr uint32_t kRetryMs = 90000;
+// A join attempt gets kAttemptMs with the radio on (and no automatic e-paper
+// refresh). If it fails the radio is switched OFF until the next attempt: a
+// station that can't find its network otherwise scans non-stop at full power,
+// which is the most expensive thing this clock can do.
 static constexpr uint32_t kAttemptMs = 60000;
+// Seconds until the next attempt, by number of failures in a row.
+static const uint16_t kBackoffS[] = {120, 300, 600, 900, 1800};
+// Connected but no time server answered: try again after this long.
+static constexpr uint32_t kSleepNoTimeMs = 10UL * 60UL * 1000UL;
+// wakeFailReason_ values that aren't SDK disconnect reasons.
+static constexpr uint8_t kReasonUnknown = 255;
+static constexpr uint8_t kReasonNoTime = 254;
 
 // Join at full power (known-good, weak signal here); once connected the radio
 // naps between beacons (modem sleep) and drops to minimum power during e-paper
@@ -94,8 +101,7 @@ const char *Net::stateName(NetState s) {
 bool Net::wifiConnected() const { return WiFi.status() == WL_CONNECTED; }
 
 bool Net::associating() const {
-  return (state_ == NetState::Failed && attemptMs_ != 0) ||
-         state_ == NetState::Waking;
+  return state_ == NetState::Failed || state_ == NetState::Waking;
 }
 
 void Net::cacheIp() {
@@ -202,7 +208,10 @@ void Net::begin(NetProgressFn onProgress) {
     Serial.println(F("Missing SSID or password — portal"));
     state_ = NetState::Portal;
     runPortal(onProgress);
-    state_ = NetState::Failed;
+    // Portal closed without a save (a save reboots): nothing to join, so the
+    // radio stays off until the hotspot is opened again from the menu.
+    wakeFailReason_ = kReasonUnknown;
+    radioDown(0);
     if (onProgress) {
       onProgress("wifi fail");
     }
@@ -247,9 +256,11 @@ void Net::begin(NetProgressFn onProgress) {
   Serial.printf("Join failed status=%d ssid=%s — stay STA, retry in loop "
                 "(hold Middle for portal)\n",
                 st, ssid.c_str());
-  // Keep trying in background; SoftAP only via hold-Middle / empty creds.
-  WiFi.begin(ssid.c_str(), psk.c_str());
-  state_ = NetState::Failed;
+  // Retries continue from update(), with the radio off in between. SoftAP only
+  // via the menu / empty creds.
+  const uint8_t why = g_discReason;  // before the scan's own disconnect (8)
+  scanForDiagnostics();
+  joinFailed(why);
   if (onProgress) {
     onProgress(st == 6 ? "bad password" : "wifi fail");
   }
@@ -294,9 +305,9 @@ void Net::radioDown(uint32_t sleepMs) {
 
 void Net::radioUp() {
   g_discReason = 0;
+  WiFi.persistent(false);  // before forceSleepWake(): it restores a mode too
   WiFi.forceSleepWake();
   delay(1);
-  WiFi.persistent(false);
   WiFi.mode(WIFI_STA);
   // Same radio settings as the boot join that works; startNtp() switches to
   // modem sleep once connected.
@@ -307,6 +318,51 @@ void Net::radioUp() {
   state_ = NetState::Waking;
   awakeSinceMs_ = millis();
   Serial.println(F("WiFi waking"));
+}
+
+/**
+ * Look only, after a join has already failed: what can the radio see?
+ * scanNetworks() stops the station with the SDK's wifi_station_disconnect(),
+ * not WiFi.disconnect(), so the stored credentials are untouched.
+ */
+void Net::scanForDiagnostics() {
+  scanNote_[0] = 0;
+  const int n = WiFi.scanNetworks(false, true);
+  if (n <= 0) {
+    Serial.printf("Scan: no networks at all (%d)\n", n);
+    snprintf(scanNote_, sizeof(scanNote_), "none");
+    return;
+  }
+  int best = -1;
+  for (int i = 0; i < n; i++) {
+    if (WiFi.SSID(i) == ssid_ && (best < 0 || WiFi.RSSI(i) > WiFi.RSSI(best))) {
+      best = i;
+    }
+  }
+  if (best < 0) {
+    Serial.printf("Scan: %d networks, '%s' not among them\n", n, ssid_);
+    snprintf(scanNote_, sizeof(scanNote_), "0/%d", n);
+  } else {
+    Serial.printf("Scan: %d networks, '%s' at %d dBm on channel %d\n", n, ssid_,
+                  (int)WiFi.RSSI(best), (int)WiFi.channel(best));
+    snprintf(scanNote_, sizeof(scanNote_), "%d c%d", (int)WiFi.RSSI(best),
+             (int)WiFi.channel(best));
+  }
+  WiFi.scanDelete();
+}
+
+void Net::joinFailed(uint8_t reason) {
+  wakeFailReason_ = reason ? reason : kReasonUnknown;
+  const uint8_t last = sizeof(kBackoffS) / sizeof(kBackoffS[0]) - 1;
+  uint32_t waitS = kBackoffS[failCount_ < last ? failCount_ : last];
+  if (failCount_ < 255) {
+    failCount_++;
+  }
+  if (awakeUntilMs_) {
+    waitS = 20;  // someone is waiting for the network (Connect / web UI)
+  }
+  Serial.printf("WiFi join failed (reason %u, %u in a row)\n", reason, failCount_);
+  radioDown(waitS * 1000UL);
 }
 
 void Net::setPowerSaver(bool on) {
@@ -322,9 +378,7 @@ void Net::stayAwake(uint32_t ms) {
     awakeUntilMs_ = until ? until : 1;
   }
   if (state_ == NetState::Asleep) {
-    wakeNow_ = true;
-  } else if (state_ == NetState::Failed) {
-    retryAtMs_ = millis();  // retry now instead of waiting up to 90 s
+    wakeNow_ = true;  // also cuts a retry back-off short
   }
 }
 
@@ -354,18 +408,20 @@ void Net::startNtp() {
 }
 
 void Net::restartNtp() {
+  // The zone goes in with the servers: configTime(0, 0, ...) resets TZ to
+  // UTC, so every re-sync (each power saver wake) put the clock on UTC.
   switch (ntpRound_ % 4) {
     case 0:
-      configTime(0, 0, "pool.ntp.org", "time.cloudflare.com");
+      configTime(tz_, "pool.ntp.org", "time.cloudflare.com");
       break;
     case 1:
-      configTime(0, 0, "0.europe.pool.ntp.org", "1.europe.pool.ntp.org");
+      configTime(tz_, "0.europe.pool.ntp.org", "1.europe.pool.ntp.org");
       break;
     case 2:
-      configTime(0, 0, "time.google.com", "time.windows.com");
+      configTime(tz_, "time.google.com", "time.windows.com");
       break;
     default:
-      configTime(0, 0, "216.239.35.0", "216.239.35.4");
+      configTime(tz_, "216.239.35.0", "216.239.35.4");
       break;
   }
   Serial.printf("NTP servers round %u\n", ntpRound_);
@@ -419,59 +475,54 @@ void Net::update() {
                     (unsigned long)(nowMs - awakeSinceMs_));
       MDNS.notifyAPChange();
       wakeFailReason_ = 0;
+      failCount_ = 0;
       woke_ = true;
       state_ = NetState::Online;
       startNtp();
     } else if (nowMs - awakeSinceMs_ > kAttemptMs) {
-      wakeFailReason_ = g_discReason ? g_discReason : 255;
-      Serial.printf("WiFi wake failed (reason %u)\n", g_discReason);
-      radioDown(kSleepAfterFailMs);
+      joinFailed(g_discReason);
     }
     return;
   }
 
-  if (saver_ && synced_ && awakeUntilMs_ == 0) {
+  if (state_ == NetState::Failed) {
+    // The link dropped and a re-join is in flight (started below).
+    if (staUp()) {
+      cacheIp();
+      Serial.printf("WiFi recovered ip=%s\n", ip_);
+      attemptMs_ = 0;
+      wakeFailReason_ = 0;
+      failCount_ = 0;
+      awakeSinceMs_ = nowMs;
+      woke_ = true;
+      state_ = NetState::Online;
+      startNtp();
+    } else if (nowMs - attemptMs_ >= kAttemptMs) {
+      joinFailed(g_discReason);  // radio off; update() wakes it for the retry
+    }
+    return;
+  }
+
+  if (saver_ && awakeUntilMs_ == 0) {
     // Synced and nobody needs the network: radio off until the next sync.
     if (state_ == NetState::Synced && othersDone_ && nowMs - awakeSinceMs_ > 5000) {
       radioDown(kSleepMs);
       return;
     }
-    // A sync that drags on (NTP unreachable...) mustn't keep the radio up.
-    if (nowMs - awakeSinceMs_ > kMaxAwakeMs) {
+    // A sync that drags on (no time server, weather stuck...) mustn't keep the
+    // radio up. A clock with no time yet gets longer before giving up.
+    if (nowMs - awakeSinceMs_ > (synced_ ? kMaxAwakeMs : 3 * kMaxAwakeMs)) {
       Serial.println(F("WiFi sync window over"));
-      if (state_ == NetState::Failed) {
-        wakeFailReason_ = g_discReason ? g_discReason : 255;
+      if (state_ == NetState::Synced) {
+        radioDown(kSleepMs);
+      } else {
+        if (!synced_) {
+          wakeFailReason_ = kReasonNoTime;  // joined, but still no time
+        }
+        radioDown(kSleepNoTimeMs);
       }
-      radioDown(state_ == NetState::Synced ? kSleepMs : kSleepAfterFailMs);
       return;
     }
-  }
-
-  if (state_ == NetState::Failed) {
-    if (staUp()) {
-      cacheIp();
-      Serial.printf("WiFi recovered ip=%s\n", ip_);
-      attemptMs_ = 0;
-      state_ = NetState::Online;
-      startNtp();
-      return;
-    }
-    const uint32_t now = millis();
-    if (attemptMs_ && now - attemptMs_ >= kAttemptMs) {
-      attemptMs_ = 0;  // give the display a turn
-    }
-    if (retryAtMs_ == 0 || (int32_t)(now - retryAtMs_) >= 0) {
-      retryAtMs_ = now + kRetryMs;
-      attemptMs_ = now ? now : 1;
-      Serial.printf("WiFi retry (last reason %u)\n", g_discReason);
-      // Same radio settings as the boot join that works (startNtp() goes back
-      // to modem sleep once connected).
-      WiFi.setSleepMode(WIFI_NONE_SLEEP);
-      WiFi.setOutputPower(kTxDbm);
-      // SDK-stored credentials; begin() without args writes nothing to flash.
-      WiFi.begin();
-    }
-    return;
   }
 
   if (!staUp()) {
@@ -484,9 +535,14 @@ void Net::update() {
         state_ = NetState::Failed;
         ip_[0] = 0;
         downSinceMs_ = 0;
-        retryAtMs_ = millis() + 5000;
-        attemptMs_ = 0;
-        Serial.printf("WiFi lost (reason %u)\n", g_discReason);
+        attemptMs_ = nowMs;
+        Serial.printf("WiFi lost (reason %u), re-joining\n", g_discReason);
+        // Same radio settings as the boot join that works (startNtp() goes
+        // back to modem sleep once connected).
+        WiFi.setSleepMode(WIFI_NONE_SLEEP);
+        WiFi.setOutputPower(kTxDbm);
+        // SDK-stored credentials; begin() without args writes nothing to flash.
+        WiFi.begin();
       }
     }
     return;
@@ -517,17 +573,31 @@ void Net::update() {
 }
 
 void Net::startPortal() {
+  if (state_ == NetState::Asleep) {
+    // Power saver has the radio in forced sleep: the hotspot can't start
+    // until it's awake again. Nothing here is written to flash.
+    WiFi.persistent(false);
+    WiFi.forceSleepWake();
+    delay(1);
+    WiFi.mode(WIFI_STA);
+    WiFi.persistent(true);
+    delay(100);
+  }
   state_ = NetState::Portal;
-  synced_ = false;
   disconnectKeepCreds();
   runPortal(nullptr);
   if (staUp()) {
     cacheIp();
     MDNS.begin("cosmolibre");
+    wakeFailReason_ = 0;
+    failCount_ = 0;
+    awakeSinceMs_ = millis();
+    woke_ = true;
     state_ = NetState::Online;
     startNtp();
   } else {
-    state_ = NetState::Failed;
+    // Closed without a save (a save reboots): back to the saved network.
+    radioDown(5000);
   }
 }
 
@@ -536,9 +606,8 @@ void Net::resync() {
     wakeNow_ = true;
   } else if (staUp()) {
     state_ = NetState::Online;  // update() restarts NTP from here
-  } else if (state_ == NetState::Failed) {
-    retryAtMs_ = millis();       // reconnect attempt on the next update()
   }
+  // Failed: a re-join is already in flight.
 }
 
 void Net::forgetAndReboot() {

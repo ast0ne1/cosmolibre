@@ -17,6 +17,11 @@ void Weather::begin() {
 static bool httpsGet(const String &url, String &body) {
   std::unique_ptr<BearSSL::WiFiClientSecure> client(new BearSSL::WiFiClientSecure);
   client->setInsecure();
+  // BearSSL's default 16 KB receive buffer doesn't fit next to the web server:
+  // a city search from the web UI ran the heap dry and the clock restarted.
+  // Open-Meteo's servers honour TLS "max fragment length", so ask for 2 KB
+  // records (saves about 14 KB). Replies are a few KB at most.
+  client->setBufferSizes(2048, 512);
   HTTPClient http;
   http.setTimeout(8000);
   if (!http.begin(*client, url)) {
@@ -24,7 +29,7 @@ static bool httpsGet(const String &url, String &body) {
   }
   int code = http.GET();
   if (code != HTTP_CODE_OK) {
-    Serial.printf("HTTP %d %s\n", code, url.c_str());
+    Serial.printf("HTTP %d (heap %u) %s\n", code, ESP.getFreeHeap(), url.c_str());
     http.end();
     return false;
   }

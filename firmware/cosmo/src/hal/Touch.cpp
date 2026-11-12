@@ -45,6 +45,10 @@ TouchPad Touch::classify(int minA0, bool sawGpio2) const {
 
 void Touch::update() {
   const uint32_t now = millis();
+  if (now - lastSampleMs_ < kSampleMs) {
+    return;
+  }
+  lastSampleMs_ = now;
   const int a0 = analogRead(A0);
 
   uint8_t g2 = digitalRead(kGpio2) ? 1 : 0;

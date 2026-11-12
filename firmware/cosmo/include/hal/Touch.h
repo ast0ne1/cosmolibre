@@ -33,6 +33,10 @@ class Touch {
   static constexpr int kMiddleA0Max = 50;
   static constexpr uint32_t kDebounceMs = 30;
   static constexpr uint32_t kHoldMs = 800;
+  // Read the pads 100 times a second. The ESP8266's ADC shares hardware with
+  // the radio: reading it flat out (every loop pass, thousands of times a
+  // second) makes Wi-Fi drop its connection and fail to re-join.
+  static constexpr uint32_t kSampleMs = 10;
 
   TouchPad classify(int minA0, bool sawGpio2) const;
 
@@ -43,6 +47,7 @@ class Touch {
   uint32_t activeSince_ = 0;
   uint32_t quietSince_ = 0;
   uint32_t gpio2EdgeMs_ = 0;
+  uint32_t lastSampleMs_ = 0;
   uint8_t gpio2Stable_ = 1;
   uint8_t gpio2Raw_ = 1;
 

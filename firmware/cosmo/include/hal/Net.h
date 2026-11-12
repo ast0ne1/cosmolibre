@@ -55,6 +55,19 @@ class Net {
   }
   /** Power saver: the last wake couldn't join (reason kept for the screen). */
   uint8_t wakeFailReason() const { return wakeFailReason_; }
+  /**
+   * The last join attempt failed and the radio is resting (or retrying) —
+   * true in any state until a join succeeds.
+   */
+  bool joinFailing() const {
+    return state_ == NetState::Failed || wakeFailReason_ != 0;
+  }
+  /**
+   * What the radio could see after a failed boot join, for the status line:
+   * "none" (no networks at all), "0/7" (7 networks, ours not among them) or
+   * "-61 c6" (ours: signal in dBm, channel). Empty if no scan was made.
+   */
+  const char *scanNote() const { return scanNote_; }
 
   /** Last station disconnect reason from the SDK (0 = none yet), e.g. 200
    *  beacon timeout, 2 auth expired, 15 handshake timeout (wrong password). */
@@ -70,7 +83,8 @@ class Net {
   const char *ip() const { return ip_; }
 
   /**
-   * True while a reconnect attempt is in flight. Automatic e-paper refreshes
+   * True while a join attempt is in flight (the radio is switched off between
+   * attempts, so the display gets its turn then). Automatic e-paper refreshes
    * should wait: a refresh during association has been seen to stop the
    * ESP8266 re-joining (status 7) on this hardware.
    */
@@ -89,10 +103,15 @@ class Net {
   bool staUp() const;
   void radioUp();
   void radioDown(uint32_t sleepMs);
+  /** A join attempt failed: note why, switch the radio off, retry later. */
+  void joinFailed(uint8_t reason);
+  void scanForDiagnostics();
 
   static constexpr uint32_t kSleepMs = 45UL * 60UL * 1000UL;  // between syncs
-  static constexpr uint32_t kSleepAfterFailMs = 10UL * 60UL * 1000UL;
   static constexpr uint32_t kMaxAwakeMs = 90UL * 1000UL;  // a scheduled sync
+
+  uint8_t failCount_ = 0;      // failed joins in a row (retry back-off)
+  char scanNote_[12] = "";
 
   bool saver_ = true;
   bool othersDone_ = true;
@@ -112,8 +131,7 @@ class Net {
   uint32_t ntpStartedMs_ = 0;
   uint32_t lastNtpAttemptMs_ = 0;
   uint32_t downSinceMs_ = 0;  // 0 = link up (or not yet seen down)
-  uint32_t retryAtMs_ = 0;    // next reconnect attempt (Failed state)
-  uint32_t attemptMs_ = 0;    // start of the current attempt, 0 = none
+  uint32_t attemptMs_ = 0;    // start of the reconnect attempt (Failed state)
   uint8_t ntpRound_ = 0;
   char ip_[16] = "";
   char tz_[48] = "CET-1CEST,M3.5.0,M10.5.0/3";
