@@ -337,9 +337,8 @@ void setup() {
   g_net.setPowerSaver(!g_settings.ui().wifiAlways);  // now that settings are loaded
   g_net.setTimezone(g_settings.tzPosix());
   g_audio.setVolume(g_settings.ui().volume);
-  if (g_settings.hasLocation() && g_net.wifiConnected()) {
-    g_weather.update(g_settings.latitude(), g_settings.longitude(), true);
-  }
+  // No weather fetch here: loop() fetches once the time has synced (the
+  // forecast's weekday labels need it), so fetching now would do it twice.
   g_web.setEnabled(g_settings.ui().webUi);
   g_web.setScreenRenderer(drawScreenForWeb, nullptr);
   g_web.begin(&g_net, &g_settings, &g_weather, &g_face);
